@@ -197,6 +197,9 @@ class SupersetSecurityManager(SecurityManager):
             return self.is_item_public(permission_name, view_name)
         return self._has_view_access(user, permission_name, view_name)
 
+    def is_anonymous(self):
+            return g.user.is_anonymous
+
     def can_access_all_queries(self) -> bool:
         """
         Return True if the user can access all queries, False otherwise.
@@ -896,7 +899,7 @@ class SupersetSecurityManager(SecurityManager):
         :param viz: The visualization
         :raises SupersetSecurityException: If the user does not have permission
         """
-
+        
         self.assert_datasource_permission(viz.datasource)
 
     def get_rls_filters(self, table: "BaseDatasource"):

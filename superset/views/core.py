@@ -180,7 +180,6 @@ def check_datasource_perms(
     :param datasource_id: The datasource ID
     :raises SupersetSecurityException: If the user cannot access the resource
     """
-
     form_data = get_form_data()[0]
 
     try:
@@ -1794,10 +1793,16 @@ class Superset(BaseSupersetView):
         """Server side rendering for a dashboard"""
         session = db.session()
         qry = session.query(Dashboard)
-        if dashboard_id.isdigit():
-            qry = qry.filter_by(id=int(dashboard_id))
-        else:
+        if not dashboard_id.isdigit(): # se o dashboard_id recebido for não numérico(exemplo: paraiba), dá acesso
             qry = qry.filter_by(slug=dashboard_id)
+        else:
+            validate_qry = qry.filter_by(slug=dashboard_id).one_or_none() # se o slug não existir ou não for este, retorna None
+            if security_manager.is_anonymous() and validate_qry is None: # é redirecionado se tentar entrar pelo id e ele não for o slug ou se estiver anônimo
+                return redirect("http://localhost:9000/superset/welcome")
+            else:
+                qry = qry.filter_by(id=int(dashboard_id))
+
+            
 
         dash = qry.one_or_none()
         if not dash:
