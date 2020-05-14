@@ -1793,16 +1793,30 @@ class Superset(BaseSupersetView):
         """Server side rendering for a dashboard"""
         session = db.session()
         qry = session.query(Dashboard)
-        if not dashboard_id.isdigit(): # se o dashboard_id recebido for não numérico(exemplo: paraiba), dá acesso
-            qry = qry.filter_by(slug=dashboard_id)
-        else:
-            validate_qry = qry.filter_by(slug=dashboard_id).one_or_none() # se o slug não existir ou não for este, retorna None
-            if security_manager.is_anonymous() and validate_qry is None: # é redirecionado se tentar entrar pelo id e ele não for o slug ou se estiver anônimo
-                return redirect("http://localhost:9000/superset/welcome")
-            else:
+        is_digit = dashboard_id.isdigit() # usado para distinguir se o slug é composto de letra ou numeral
+    
+        if not security_manager.is_anonymous(): # da acesso ao dashboard independente da forma de acesso se estiver logado
+            if is_digit:
                 qry = qry.filter_by(id=int(dashboard_id))
-
-            
+            else:
+                qry = qry.filter_by(slug=dashboard_id)
+        else:
+            if is_digit: # se for numeral, precisa checar se o id é igual ao slug, se for, da acesso
+                validate_qry_slug = qry.filter_by(slug=dashboard_id).one_or_none() # se o slug não existir ou não for este, retorna None
+                validate_qry_id =  qry.filter_by(id=int(dashboard_id)).one_or_none()
+                if validate_qry_id.published: # se estiver publicado, precisamos saber se o slug é igual ao id
+                    if validate_qry_slug is not None: # entra aqui se o id for igual ao slug
+                        qry = qry.filter_by(id=int(dashboard_id))
+                    else:
+                        return redirect("http://localhost:9000/superset/welcome")
+                else: # se não estiver publicado ou o slug não for o id, redireciona
+                    return redirect("http://localhost:9000/superset/welcome")
+            else: # se não conter letra, só precisa fazer a checagem se é publico ou não para dar ou não acesso
+                validate_qry_slug = qry.filter_by(slug=dashboard_id).one_or_none()
+                if validate_qry_slug.published: # se for slug e estiver publicado, tem acesso
+                    qry = qry.filter_by(slug=dashboard_id)
+                else:
+                    return redirect("http://localhost:9000/superset/welcome")
 
         dash = qry.one_or_none()
         if not dash:
@@ -1892,8 +1906,8 @@ class Superset(BaseSupersetView):
             return json_success(
                 json.dumps(bootstrap_data, default=utils.pessimistic_json_iso_dttm_ser)
             )
-
-        return self.render_template(
+        
+        template = self.render_template(
             "superset/dashboard.html",
             entry="dashboard",
             standalone_mode=standalone_mode,
@@ -1902,6 +1916,16 @@ class Superset(BaseSupersetView):
                 bootstrap_data, default=utils.pessimistic_json_iso_dttm_ser
             ),
         )
+        # tag_head guarda o que será inserido dentro de <head>, a inserção é feito no inicio
+        tag_head = ""
+        head_index = template.find('<head')
+        template_with_head = template[:head_index+6] + tag_head + template[head_index+6:]
+        # tag_body guarda o que será inserido dentro de <body>, a inserção é feita no início
+        tag_body = ""
+        body_index = template_with_head.find('<body')
+        template_with_head_and_body = template_with_head[:body_index+7] + tag_body + template_with_head[body_index+7:]
+        return template_with_head_and_body
+        
 
     @api
     @event_logger.log_this
