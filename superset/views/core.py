@@ -702,7 +702,7 @@ class Superset(BaseSupersetView):
         samples = request.args.get("samples") == "true"
         force = request.args.get("force") == "true"
         form_data = get_form_data()[0]
-
+        
         try:
             datasource_id, datasource_type = get_datasource_info(
                 datasource_id, datasource_type, form_data
@@ -1793,34 +1793,26 @@ class Superset(BaseSupersetView):
         """Server side rendering for a dashboard"""
         session = db.session()
         qry = session.query(Dashboard)
-        is_digit = dashboard_id.isdigit() # usado para distinguir se o slug é composto de letra ou numeral
-    
+
         if not security_manager.is_anonymous(): # da acesso ao dashboard independente da forma de acesso se estiver logado
-            if is_digit:
+            if dashboard_id.isdigit():
                 qry = qry.filter_by(id=int(dashboard_id))
             else:
                 qry = qry.filter_by(slug=dashboard_id)
         else:
-            if is_digit: # se for numeral, precisa checar se o id é igual ao slug, se for, da acesso
-                validate_qry_slug = qry.filter_by(slug=dashboard_id).one_or_none() # se o slug não existir ou não for este, retorna None
-                validate_qry_id =  qry.filter_by(id=int(dashboard_id)).one_or_none()
-                if validate_qry_id.published: # se estiver publicado, precisamos saber se o slug é igual ao id
-                    if validate_qry_slug is not None: # entra aqui se o id for igual ao slug
-                        qry = qry.filter_by(id=int(dashboard_id))
-                    else:
-                        return redirect("http://localhost:9000/superset/welcome")
-                else: # se não estiver publicado ou o slug não for o id, redireciona
-                    return redirect("http://localhost:9000/superset/welcome")
-            else: # se não conter letra, só precisa fazer a checagem se é publico ou não para dar ou não acesso
-                validate_qry_slug = qry.filter_by(slug=dashboard_id).one_or_none()
-                if validate_qry_slug.published: # se for slug e estiver publicado, tem acesso
+            validate_qry_slug = qry.filter_by(slug=dashboard_id).one_or_none() # só autoriza acesso se for pela slug
+            try:
+                if validate_qry_slug.published:
                     qry = qry.filter_by(slug=dashboard_id)
                 else:
-                    return redirect("http://localhost:9000/superset/welcome")
+                    return redirect("http://localhost:8088/superset/welcome")
+            except:
+                return redirect("http://localhost:8088/superset/welcome")        
 
         dash = qry.one_or_none()
-        if not dash:
-            abort(404)
+        if not dash: # se não estiver no modo anônimo e o slug ou id não existir, ele entra aq
+            return redirect("http://localhost:8088/superset/welcome")
+
 
         datasources = defaultdict(list)
         for slc in dash.slices:
@@ -1848,6 +1840,7 @@ class Superset(BaseSupersetView):
             else datasource.data
             for datasource, slices in datasources.items()
         }
+        print(datasources_payload)
 
         dash_edit_perm = check_ownership(
             dash, raise_if_false=False
@@ -1901,7 +1894,7 @@ class Superset(BaseSupersetView):
             "editMode": edit_mode,
             "urlParams": url_params,
         }
-
+        
         if request.args.get("json") == "true":
             return json_success(
                 json.dumps(bootstrap_data, default=utils.pessimistic_json_iso_dttm_ser)
@@ -1917,11 +1910,11 @@ class Superset(BaseSupersetView):
             ),
         )
         # tag_head guarda o que será inserido dentro de <head>, a inserção é feito no inicio
-        tag_head = ""
+        tag_head = "\n<!-- Google Tag Manager -->\n<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MQPMX9Q');\n</script>\n<!-- End Google Tag Manager -->"
         head_index = template.find('<head')
         template_with_head = template[:head_index+6] + tag_head + template[head_index+6:]
         # tag_body guarda o que será inserido dentro de <body>, a inserção é feita no início
-        tag_body = ""
+        tag_body = '<!-- Google Tag Manager (noscript) --><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MQPMX9Q" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>\n<!-- End Google Tag Manager (noscript) -->'
         body_index = template_with_head.find('<body')
         template_with_head_and_body = template_with_head[:body_index+7] + tag_body + template_with_head[body_index+7:]
         return template_with_head_and_body

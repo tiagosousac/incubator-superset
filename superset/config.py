@@ -135,8 +135,8 @@ SECRET_KEY = (
 )
 
 # The SQLAlchemy connection string.
-SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(DATA_DIR, "superset.db")
-# SQLALCHEMY_DATABASE_URI = "postgresql://postgres:postgres@localhost:5432/facilit"
+# SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(DATA_DIR, "superset.db")
+SQLALCHEMY_DATABASE_URI = "postgresql://postgres:postgres@localhost:5432/facilit"
 # SQLALCHEMY_DATABASE_URI = 'mysql://myapp@localhost/myapp'
 # SQLALCHEMY_DATABASE_URI = 'postgresql://root:password@localhost/myapp'
 
@@ -449,7 +449,7 @@ BACKUP_COUNT = 30
 QUERY_LOGGER = None
 
 # Set this API key to enable Mapbox visualizations
-MAPBOX_API_KEY = os.environ.get("MAPBOX_API_KEY", "pk.eyJ1IjoidGlhZ29zY2FydmFsaG8iLCJhIjoiY2s4cm93YmF1MGgzNTNlcG0zOWcyczc5dSJ9.Ornb1h7XL6aMHq8B2abtSg")
+MAPBOX_API_KEY = os.environ.get("MAPBOX_API_KEY", "pk.eyJ1IjoidGlhZ29zY2FydmFsaG8iLCJhIjoiY2thY2hnajFrMXN0OTJydWx6aTZyOThiNyJ9.dmwuiXRDEzzjRZEE3WrfDQ")
 
 # Maximum number of rows returned from a database
 # in async mode, no more than SQL_MAX_ROW will be returned and stored
